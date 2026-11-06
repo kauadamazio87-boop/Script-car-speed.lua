@@ -9,10 +9,11 @@ local LocalPlayer = Players.LocalPlayer
 -- ============================================
 -- VARIÁVEIS DE ESTADO
 -- ============================================
-local velocityMult = 0.025   -- Multiplicador padrão (25 x1000)
-local VELOCIDADE_MAXIMA = 500 -- Limite padrão
+local velocityMult = 0.025   
+local VELOCIDADE_MAXIMA = 500 
+local acelerando = false     -- Variável que o botão vai controlar
 local freando = false
-local brakeMult = 0.15       -- Força do freio padrão (150 x1000)
+local brakeMult = 0.15
 local flightEnabled = false
 local flightSpeed = 1
 local defaultCharacterParent
@@ -68,8 +69,18 @@ VehicleTab:CreateSlider({
    end,
 })
 
+-- O BOTÃO QUE ATIVA A ACELERAÇÃO
 VehicleTab:CreateToggle({
-   Name = "Ativar Freio Automático",
+   Name = "Pisar no Acelerador (Aceleração)",
+   CurrentValue = false,
+   Flag = "AccelToggle",
+   Callback = function(State)
+       acelerando = State
+   end,
+})
+
+VehicleTab:CreateToggle({
+   Name = "Ativar Freio",
    CurrentValue = false,
    Flag = "BrakeToggle",
    Callback = function(State)
@@ -104,59 +115,6 @@ VehicleTab:CreateButton({
 })
 
 -- ============================================
--- ABA: FLIGHT (VOAR)
--- ============================================
-local FlightTab = Window:CreateTab("Flight", 4483362458)
-
-FlightTab:CreateToggle({
-   Name = "Ativar Voo",
-   CurrentValue = false,
-   Flag = "FlightToggle",
-   Callback = function(State)
-       flightEnabled = State
-   end,
-})
-
-FlightTab:CreateSlider({
-   Name = "Velocidade do Voo",
-   Range = {0, 800},
-   Increment = 50,
-   Suffix = "Speed",
-   CurrentValue = 100,
-   Flag = "FlightSpeed",
-   Callback = function(Value)
-       flightSpeed = Value / 100
-   end,
-})
-
--- ============================================
--- ABA: SPRINGS
--- ============================================
-local SpringsTab = Window:CreateTab("Springs", 4483362458)
-
-SpringsTab:CreateToggle({
-   Name = "Mostrar Springs (Molas)",
-   CurrentValue = false,
-   Flag = "SpringsToggle",
-   Callback = function(v)
-       local Character = LocalPlayer.Character
-       if Character and Character:FindFirstChildWhichIsA("Humanoid") then
-           local SeatPart = Character.Humanoid.SeatPart
-           if SeatPart and SeatPart:IsA("VehicleSeat") then
-               local Vehicle = GetVehicleFromDescendant(SeatPart)
-               if Vehicle then
-                   for _, SpringConstraint in pairs(Vehicle:GetDescendants()) do
-                       if SpringConstraint:IsA("SpringConstraint") then
-                           SpringConstraint.Visible = v
-                       end
-                   end
-               end
-           end
-       end
-   end,
-})
-
--- ============================================
 -- LOOP PRINCIPAL (FÍSICA REALISTA)
 -- ============================================
 RunService.Heartbeat:Connect(function()
@@ -166,15 +124,14 @@ RunService.Heartbeat:Connect(function()
         if SeatPart and SeatPart:IsA("VehicleSeat") then
             
             local vel = SeatPart.AssemblyLinearVelocity
-            local acelerandoAgora = SeatPart.ThrottleFloat > 0
 
-            -- 1. ACELERAÇÃO (Só quando você segura o botão do jogo)
-            if acelerandoAgora then
+            -- 1. ACELERAÇÃO (Quando você liga o botão na GUI)
+            if acelerando then
                 SeatPart.AssemblyLinearVelocity = vel * Vector3.new(1 + velocityMult, 1, 1 + velocityMult)
             end
 
             -- 2. DESACELERAÇÃO NATURAL (Quando solta o botão, perde 2% da velocidade por frame)
-            if not acelerandoAgora and not freando then
+            if not acelerando and not freando then
                 if vel.Magnitude > 5 then
                     SeatPart.AssemblyLinearVelocity = vel * Vector3.new(0.98, 1, 0.98)
                 end
@@ -277,4 +234,4 @@ InfoTab:CreateButton({
    end,
 })
 
-print("✅ Script do Carro (Rayfield) atualizado com física realista!")
+print("✅ Script do Carro (Rayfield) atualizado!")
