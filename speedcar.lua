@@ -3,14 +3,12 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Variáveis de Estado
-local velocityEnabled = true
-local acelerando = false
+local velocityMult = 0.025   -- Multiplicador padrão
+local VELOCIDADE_MAXIMA = 500 -- Limite padrão
 local freando = false
-local velocityMult = 0.025
 local brakeMult = 0.15
 local flightEnabled = false
 local flightSpeed = 1
@@ -43,17 +41,22 @@ local Window = Rayfield:CreateWindow({
 -- ============================================
 local VehicleTab = Window:CreateTab("Veículo", 4483362458)
 
-VehicleTab:CreateToggle({
-   Name = "Ativar Aceleração Automática",
-   CurrentValue = false,
-   Flag = "AccelToggle",
-   Callback = function(State)
-       acelerando = State
+-- Slider do Limite de Velocidade
+VehicleTab:CreateSlider({
+   Name = "Limite de Velocidade Máxima",
+   Range = {100, 2000}, -- Você pode aumentar se quiser "infinito"
+   Increment = 50,
+   Suffix = "studs/s",
+   CurrentValue = 500,
+   Flag = "MaxSpeed",
+   Callback = function(Value)
+       VELOCIDADE_MAXIMA = Value
    end,
 })
 
+-- Slider do Multiplicador de Aceleração
 VehicleTab:CreateSlider({
-   Name = "Força da Aceleração (Multiplier)",
+   Name = "Multiplicador de Aceleração",
    Range = {1, 50},
    Increment = 5,
    Suffix = "x1000",
@@ -64,6 +67,7 @@ VehicleTab:CreateSlider({
    end,
 })
 
+-- Freio
 VehicleTab:CreateToggle({
    Name = "Ativar Freio Automático",
    CurrentValue = false,
@@ -153,19 +157,27 @@ SpringsTab:CreateToggle({
 })
 
 -- ============================================
--- LOOP PRINCIPAL (ACELERAÇÃO E FREIO)
+-- LOOP PRINCIPAL (FÍSICA DO CARRO)
 -- ============================================
 RunService.Heartbeat:Connect(function()
     local Character = LocalPlayer.Character
     if Character and Character:FindFirstChildWhichIsA("Humanoid") then
         local SeatPart = Character.Humanoid.SeatPart
         if SeatPart and SeatPart:IsA("VehicleSeat") then
-            -- Aceleração
-            if acelerando and velocityEnabled then
+            
+            -- 1. ACELERAÇÃO CONDICIONAL
+            -- Só multiplica se o carro já estiver andando (você apertando o acelerador do jogo)
+            if SeatPart.AssemblyLinearVelocity.Magnitude > 5 then
                 SeatPart.AssemblyLinearVelocity *= Vector3.new(1 + velocityMult, 1, 1 + velocityMult)
             end
-            -- Freio
-            if freando and velocityEnabled then
+
+            -- 2. LIMITE DE VELOCIDADE
+            if SeatPart.AssemblyLinearVelocity.Magnitude > VELOCIDADE_MAXIMA then
+                SeatPart.AssemblyLinearVelocity = SeatPart.AssemblyLinearVelocity.Unit * VELOCIDADE_MAXIMA
+            end
+
+            -- 3. FREIO
+            if freando then
                 SeatPart.AssemblyLinearVelocity *= Vector3.new(1 - brakeMult, 1, 1 - brakeMult)
             end
         end
@@ -194,7 +206,7 @@ RunService.Stepped:Connect(function()
 							end
 						end
 						local PrimaryPartCFrame = Vehicle:GetPrimaryPartCFrame()
-						Vehicle:SetPrimaryPartCFrame(CFrame.new(PrimaryPartCFrame.Position, PrimaryPartCFrame.Position + workspace.CurrentCamera.CFrame.LookVector) * (UserInputService:GetFocusedTextBox() and CFrame.new(0, 0, 0) or CFrame.new((UserInputService:IsKeyDown(Enum.KeyCode.D) and flightSpeed) or (UserInputService:IsKeyDown(Enum.KeyCode.A) and -flightSpeed) or 0, (UserInputService:IsKeyDown(Enum.KeyCode.E) and flightSpeed / 2) or (UserInputService:IsKeyDown(Enum.KeyCode.Q) and -flightSpeed / 2) or 0, (UserInputService:IsKeyDown(Enum.KeyCode.S) and flightSpeed) or (UserInputService:IsKeyDown(Enum.KeyCode.W) and -flightSpeed) or 0)))
+						Vehicle:SetPrimaryPartCFrame(CFrame.new(PrimaryPartCFrame.Position, PrimaryPartCFrame.Position + workspace.CurrentCamera.CFrame.LookVector) * (UserInputService and UserInputService:GetFocusedTextBox() and CFrame.new(0, 0, 0) or CFrame.new((UserInputService and UserInputService:IsKeyDown(Enum.KeyCode.D) and flightSpeed) or (UserInputService and UserInputService:IsKeyDown(Enum.KeyCode.A) and -flightSpeed) or 0, (UserInputService and UserInputService:IsKeyDown(Enum.KeyCode.E) and flightSpeed / 2) or (UserInputService and UserInputService:IsKeyDown(Enum.KeyCode.Q) and -flightSpeed / 2) or 0, (UserInputService and UserInputService:IsKeyDown(Enum.KeyCode.S) and flightSpeed) or (UserInputService and UserInputService:IsKeyDown(Enum.KeyCode.W) and -flightSpeed) or 0)))
 						SeatPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 						SeatPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 					end
@@ -255,4 +267,4 @@ InfoTab:CreateButton({
    end,
 })
 
-print("✅ Script do Carro (Rayfield) carregado com sucesso!")
+print("✅ Script do Carro (Rayfield) corrigido e carregado!")
